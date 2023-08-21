@@ -7,6 +7,9 @@ main();
 
 // create piece
 fun void main() {
+    // track arrays are arranged in the form of ["dynamic", "duration", "dynamic", "duration", ...]
+    // "s" indicates a segment of silence for the indicated duration
+    // "x" indicates a change in recording before playing that segment
     [["6","23"], ["s13"], ["6","14"], ["s7.5"], ["6","2.5"], ["s2.5"], ["x6","23.5"], ["s11"], ["6","7.5"], ["s13.5"], ["7","28","4"], ["x7","28","4"], ["s22"], ["3","8","8","15","5"], ["s10"], ["3","7","8","8","5"], ["x3","5","8","6","5"], ["s26"], ["x3","4","8","5","5"], ["s30"], ["3","21","8","7",""], ["s11"], ["4","36"], ["x4","6"], ["s15"], ["7","15","3","9","6","10","2"], ["s13"], ["7","10","3","7","6","13","2"], ["s19"], ["7","7","3","3","6","14","2"], ["x8","5"], ["s6"], ["8","5"], ["s18"], ["8","27"], ["s22"], ["8","38"], ["x8","8"], ["s15"], ["5","4","7"], ["s13"], ["5","9","7"], ["s5"], ["x6","2"], ["s15"], ["6","17"], ["s28"], ["3","5","5","24","2"], ["s21"], ["3","16","5","23","2"], ["x6","33","3"], ["x6","5","3"]] @=> string track1[][];
     
     [["8","1.5","6"], ["s3.5"], ["8","9","6"], ["x8","13","6"], ["s6"], ["8","11","6"], ["s11"], ["7","10"], ["s2.5"], ["7","6.5"], ["s19"], ["5","5"], ["s8"], ["5","2"], ["s109"], ["5","10"], ["s19"], ["5","24"], ["s9"], ["4","4","7"], ["s11"], ["4","3","7"], ["s73"], ["x4","34","7"], ["s6"], ["4","7","7"], ["s10"], ["5","6"], ["x5","12","6"], ["s41"], ["5","11","6"], ["s65"], ["5","4","6"], ["x3","8"], ["s9"], ["3","15"], ["s14"], ["3","16"], ["x8","5"], ["s10"], ["8","29"], ["s14"], ["8","13"], ["s17"], ["7","5","2","9","7","7","1"], ["s23"], ["7","2","2","2","7","3","1"], ["s12"], ["x7","6","2","9","7","4","1"], ["s32"], ["6","8"], ["s16"], ["3","11","5"], ["x3","11","5"], ["x3","8","5"], ["s16"]] @=> string track2[][];
@@ -79,7 +82,7 @@ fun SndBuf2[] createBuffers() {
 }
 
 
-// play three clicks in a quarter-eighth-eighth rhythm
+// play clicks in a quarter-eighth-eighth rhythm
 fun void playIntroClicks(Impulse impulse) {   
     1 => impulse.next;
     1::second => now;
@@ -105,12 +108,13 @@ fun void playTrack(SndBuf2 buffer, string track[][]) {
         segment[0].charAt(0) => int flag;
         float duration;
         
+        // remove flag for easy string -> float conversion
         if (flag == changeFlag || flag == silenceFlag) {
             segment[0].substring(1) => segment[0];
-            
-            if (flag == changeFlag) {
-                getNextRecording(buffer);
-            }
+        }
+        
+        if (flag == changeFlag) {
+            getNextRecording(buffer);
         }
         
         // silence buffer, play with static dynamic, or crescendo/decrescendo as indicated
@@ -126,11 +130,11 @@ fun void playTrack(SndBuf2 buffer, string track[][]) {
         }
         else {
             for (0 => int i; i < segment.size() - 2; 2 +=> i) {
-                Std.atof(segment[i]) => float startVolume;
-                Std.atof(segment[i+2]) => float finishVolume;
+                Std.atof(segment[i]) => float start;
+                Std.atof(segment[i+2]) => float finish;
                 Std.atof(segment[i+1]) => duration;
                 
-                playSegment(buffer, startVolume, finishVolume, duration * tapeUnit);
+                playSegment(buffer, start, finish, duration * tapeUnit);
             }
         }
     }
@@ -157,9 +161,9 @@ fun float getsScaledDynamic(float dynamic) {
 
 
 // play a scored segment for the indicated time while moving smoothly between dynamic indications
-fun void playSegment(SndBuf2 buffer, float a, float b, float duration) {
-    getsScaledDynamic(a) => float start;
-    getsScaledDynamic(b) => float finish;
+fun void playSegment(SndBuf2 buffer, float start, float finish, float duration) {
+    getsScaledDynamic(start) => start;
+    getsScaledDynamic(finish) => finish;
     
     start => buffer.gain;
     finish - start => float difference;
